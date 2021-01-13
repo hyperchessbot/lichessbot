@@ -10,6 +10,8 @@ use shakmaty::fen::Fen;
 
 use rand::prelude::*;
 
+use uciengine::uciengine::*;
+
 pub fn make_uci_moves(ucis_str: &str) -> Result<String, Box<dyn std::error::Error>> {
 	let mut pos = Chess::default();
 	if ucis_str.len() > 0 {
@@ -49,6 +51,8 @@ impl LichessBot {
 			.unwrap();
 		
 		let mut bot_white = true;					
+
+		let engine = UciEngine::new("stockfish12.exe");
 		
 		while let Some(game_event) = game_stream.try_next().await? {
 			println!("{:?}", game_event);
@@ -121,7 +125,37 @@ impl LichessBot {
 			if bot_turn {
 				let id = game_id.to_owned();
 
-				let result = self.lichess.make_a_bot_move(id.as_str(), rand_uci.as_str(), false).await;
+				let moves = format!("{}", state.moves);
+
+				let go_job = GoJob::new()
+					.uci_opt("UCI_Variant", "chess")
+					.pos_startpos()
+					.pos_moves(moves)
+					.tc(Timecontrol{
+						wtime: state.wtime as usize,
+						winc: state.winc as usize,
+						btime: state.btime as usize,
+						binc: state.binc as usize
+					})
+				;
+
+				println!("engine start thinking on {:?}", go_job);
+
+				let go_result = engine.go(go_job).recv().await;
+
+				println!("thinking result {:?}", go_result);
+
+				let mut bestmove = rand_uci;
+
+				if let Some(go_result) = go_result {
+					if let Some(bm) = go_result.bestmove {
+						bestmove = bm;
+					}
+				}
+
+				println!("making move {}", bestmove);
+				
+				let result = self.lichess.make_a_bot_move(id.as_str(), bestmove.as_str(), false).await;
 
 				println!("make move result {:?}", result);
 			}

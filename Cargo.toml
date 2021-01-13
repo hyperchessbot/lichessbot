@@ -1,6 +1,6 @@
 [package]
 name = "lichessbot"
-version = "0.1.6"
+version = "0.1.7"
 authors = ["hyperchessbot <hyperchessbot@gmail.com>"]
 edition = "2018"
 keywords = ["lichess", "bot"]
@@ -8,7 +8,7 @@ description = "Lichess bot. Under construction."
 license = "MIT"
 repository = "https://github.com/hyperchessbot/lichessbot"
 homepage = "https://github.com/hyperchessbot/lichessbot#lichessbot"
-documentation = "https://docs.rs/lichessbot/0.1.6"
+documentation = "https://docs.rs/lichessbot/0.1.7"
 readme = "ReadMe.md"
 
 [dependencies]
@@ -20,6 +20,7 @@ futures-util = "0.3.9"
 licoricedev = "0.1.0"
 shakmaty = "0.17.1"
 rand = "0.8.0"
+uciengine = "0.1.22"
 
 [dependencies.tokio]
 version = "1.0.1"

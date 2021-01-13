@@ -6,3 +6,5 @@ Cargo.lock
 *.pgn
 
 p.bat
+
+*.exe
