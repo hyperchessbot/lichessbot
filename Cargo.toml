@@ -17,14 +17,11 @@ dotenv = "0.15.0"
 log = "0.4.11"
 env_logger = "0.8.2"
 futures-util = "0.3.9"
+licoricedev = "0.1.0"
 
 [dependencies.tokio]
 version = "1.0.1"
 features = ["full"]
-
-[dependencies.licorice]
-git = "https://gitlab.com/icp1994/licorice"
-rev = "3403a7e8"
 
 [[bin]]
 name = "example"

@@ -12,7 +12,7 @@ extern crate env_logger;
 use dotenv::dotenv;
 
 use futures_util::TryStreamExt;
-use licorice::client::{Lichess};
+use licoricedev::client::{Lichess};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>>{
