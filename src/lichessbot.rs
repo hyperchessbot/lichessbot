@@ -29,7 +29,10 @@ pub fn make_uci_moves(ucis_str: &str) -> Result<String, Box<dyn std::error::Erro
 
 /// lichess bot
 pub struct LichessBot {
-	lichess: Lichess
+	/// lichess
+	pub lichess: Lichess,
+	/// engine name
+	pub engine_name: String,
 }
 
 /// lichess bot implementation
@@ -37,7 +40,8 @@ impl LichessBot {
 	/// create new lichess bot
 	pub fn new() -> LichessBot {
 		LichessBot {
-			lichess: Lichess::new(std::env::var("RUST_BOT_TOKEN").unwrap())
+			lichess: Lichess::new(std::env::var("RUST_BOT_TOKEN").unwrap()),
+			engine_name: std::env::var("RUST_BOT_ENGINE_NAME").unwrap(),
 		}
 	}
 
@@ -52,7 +56,7 @@ impl LichessBot {
 		
 		let mut bot_white = true;					
 
-		let engine = UciEngine::new("stockfish12.exe");
+		let engine = UciEngine::new(self.engine_name.to_owned());
 		
 		while let Some(game_event) = game_stream.try_next().await? {
 			println!("{:?}", game_event);
@@ -154,7 +158,7 @@ impl LichessBot {
 				}
 
 				println!("making move {}", bestmove);
-				
+
 				let result = self.lichess.make_a_bot_move(id.as_str(), bestmove.as_str(), false).await;
 
 				println!("make move result {:?}", result);
