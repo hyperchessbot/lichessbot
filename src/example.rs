@@ -11,7 +11,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
 
 	let mut bot = LichessBot::new();
 
-	let _ = bot.stream().await;
-
-	Ok(())
+	bot.stream().await
 }
