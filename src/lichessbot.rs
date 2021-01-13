@@ -12,6 +12,7 @@ use rand::prelude::*;
 
 use uciengine::uciengine::*;
 
+/// make uci moves from starting position and return fen of resulting position
 pub fn make_uci_moves(ucis_str: &str) -> Result<String, Box<dyn std::error::Error>> {
 	let mut pos = Chess::default();
 	if ucis_str.len() > 0 {
@@ -29,7 +30,7 @@ pub fn make_uci_moves(ucis_str: &str) -> Result<String, Box<dyn std::error::Erro
 
 /// lichess bot
 pub struct LichessBot {
-	/// lichess
+	/// lichess client
 	pub lichess: Lichess,	
 	/// bot name
 	pub bot_name: String,
