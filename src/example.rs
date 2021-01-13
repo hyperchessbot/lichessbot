@@ -18,8 +18,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
 		.unwrap();
 
 	while let Some(event) = event_stream.try_next().await? {
-    	let event = event;
-
     	println!("event {:?}", event)
     }
 
