@@ -1,3 +1,5 @@
+use log::{debug, log_enabled, info, Level};
+
 use futures_util::TryStreamExt;
 use licoricedev::client::{Lichess};
 use licoricedev::models::board::{Event, BoardState};
@@ -54,7 +56,9 @@ impl LichessBot {
 
 	/// play game
 	async fn play_game(&mut self, game_id: String) -> Result<(), Box::<dyn std::error::Error>> {
-		println!("playing game {}", game_id);
+		if log_enabled!(Level::Info) {
+			info!("playing game {}", game_id);
+		}
 
 		let mut game_stream = self.lichess
 			.stream_bot_game_state(&game_id)
@@ -65,26 +69,34 @@ impl LichessBot {
 
 		let engine:Option<std::sync::Arc<uciengine::uciengine::UciEngine>> = match self.engine_name.to_owned() {
 			Some(engine_name) => {
-				println!("created engine for playing game");
+				if log_enabled!(Level::Debug) {
+					debug!("created engine for playing game");
+				}
 
 				Some(UciEngine::new(engine_name))
 			},
 			_ => {
-				println!("no engine available for playing game");
+				if log_enabled!(Level::Debug) {
+					debug!("no engine available for playing game");
+				}
 
 				None
 			}
 		};
 		
 		while let Some(game_event) = game_stream.try_next().await? {
-			println!("{:?}", game_event);
+			if log_enabled!(Level::Debug) {
+				debug!("game event {:?}", game_event);
+			}
 
 			let white:String;
 			let black:String;			
 			
 			let state_opt = match game_event {
 				BoardState::GameFull ( game_full ) => {
-					println!("game full {:?}", game_full);
+					if log_enabled!(Level::Debug) {
+						debug!("game full {:?}", game_full);
+					}
 					
 					white = match game_full.white {
 						LightUser(user) => user.username,
@@ -100,7 +112,9 @@ impl LichessBot {
 						bot_white = false;
 					}
 					
-					println!("**************\n{} - {} bot white {}\n**************", white, black, bot_white);
+					if log_enabled!(Level::Info) {
+						info!("**************\n{} - {} ( bot playing white {} )\n**************", white, black, bot_white);
+					}
 					
 					Some(game_full.state)
 				},
@@ -108,7 +122,9 @@ impl LichessBot {
 					Some(game_state)
 				},
 				_ => {
-					println!("undhandled game event {:?}", game_event);
+					if log_enabled!(Level::Debug) {
+						debug!("undhandled game event {:?}", game_event);
+					}
 
 					None
 				}
@@ -117,11 +133,15 @@ impl LichessBot {
 			if state_opt.is_some() {
 				let state = state_opt.unwrap();
 
-				println!("state {:?}", state);
+				if log_enabled!(Level::Debug) {
+					debug!("game state {:?}", state);
+				}
 
 				let fen = make_uci_moves(state.moves.as_str())?;
 
-				println!("fen {}", fen);
+				if log_enabled!(Level::Debug) {
+					debug!("fen of current position {}", fen);
+				}
 
 				let setup: Fen = fen.parse()?;
 				let pos: Chess = setup.position(shakmaty::CastlingMode::Standard)?;
@@ -133,15 +153,21 @@ impl LichessBot {
 
 					let rand_uci = Uci::from_standard(&rand_move).to_string();
 
-					println!("rand uci {}", rand_uci);
+					if log_enabled!(Level::Debug) {
+						debug!("rand uci {}", rand_uci);
+					}
 
 					let turn = setup.turn;
 
-					println!("turn {:?}", turn);
+					if log_enabled!(Level::Debug) {
+						debug!("turn {:?}", turn);
+					}
 
 					let bot_turn = ( ( turn == Color::White ) && bot_white ) || ( ( turn == Color::Black ) && !bot_white );
 
-					println!("bot turn {}", bot_turn);
+					if log_enabled!(Level::Debug) {
+						debug!("bot turn {}", bot_turn);
+					}
 
 					if bot_turn {
 						let mut bestmove = rand_uci;
@@ -163,11 +189,15 @@ impl LichessBot {
 								})
 							;
 
-							println!("engine start thinking on {:?}", go_job);
+							if log_enabled!(Level::Info) {
+								info!("engine start thinking on {:?}", go_job);
+							}
 
 							let go_result = engine.clone().unwrap().go(go_job).recv().await;
 
-							println!("thinking result {:?}", go_result);
+							if log_enabled!(Level::Debug) {
+								debug!("thinking result {:?}", go_result);
+							}
 
 							if let Some(go_result) = go_result {
 								if let Some(bm) = go_result.bestmove {
@@ -175,17 +205,25 @@ impl LichessBot {
 								}
 							}
 						} else {
-							println!("no engine available, making random move");
+							if log_enabled!(Level::Info) {
+								info!("no engine available, making random move");
+							}
 						}
 
-						println!("making move {}", bestmove);
+						if log_enabled!(Level::Info) {
+							info!("making move {}", bestmove);
+						}
 
 						let result = self.lichess.make_a_bot_move(id.as_str(), bestmove.as_str(), false).await;
 
-						println!("make move result {:?}", result);
+						if log_enabled!(Level::Debug) {
+							debug!("make move result {:?}", result);
+						}
 					}
 				} else {
-					println!("position has no legal move");
+					if log_enabled!(Level::Info) {
+						info!("position has no legal move");
+					}
 				}
 			}
 		}
@@ -199,31 +237,49 @@ impl LichessBot {
 
 	/// process event stream event
 	async fn process_event_stream_event(&mut self, event: Event) -> Result<(), Box::<dyn std::error::Error>> {
-		println!("event {:?}", event);
+		if log_enabled!(Level::Debug) {
+			debug!("event {:?}", event);
+		}
 
 		match event {
 			Event::Challenge { challenge } => {
-				println!("incoming challenge {:?}", challenge.id);
+				if log_enabled!(Level::Info) {
+					info!("incoming challenge {:?}", challenge.id);
+				}
 				
 				if challenge.variant.key == "standard" {
 					if challenge.speed == "correspondence" {
-						println!("rejecting challenge, correspondence");
+						if log_enabled!(Level::Info) {
+							info!("rejecting challenge, correspondence");
+						}
 					} else {
-						println!("accepting challenge, response {:?}",
-							self.lichess.challenge_accept(&challenge.id).await);															}
+						if log_enabled!(Level::Info) {
+							info!("accepting challenge, response {:?}",
+								self.lichess.challenge_accept(&challenge.id).await);															}
+						}
 				} else {
-					println!("rejecting challenge, wrong variant {}", challenge.variant.key);
+					if log_enabled!(Level::Info) {
+						info!("rejecting challenge, wrong variant {}", challenge.variant.key);
+					}
 				}
 			},
 			Event::GameStart { game } => {
 				let game_id = format!("{}", game.id);
 
-				println!("game started {}", game_id);
+				if log_enabled!(Level::Info) {
+					info!("game started {}", game_id);
+				}
 
-				println!("play game result {:?}", self.play_game(game_id).await);
+				let result = self.play_game(game_id).await;
+
+				if log_enabled!(Level::Info) {
+					info!("playing game finished with result {:?}", result);
+				}
 			}
 			_ => {
-				println!("unhandled event")
+				if log_enabled!(Level::Debug) {
+					debug!("unhandled event {:?}", event)
+				}
 			}
 		};
 
