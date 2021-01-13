@@ -3,6 +3,25 @@ use licoricedev::client::{Lichess};
 use licoricedev::models::board::{Event, BoardState};
 use licoricedev::models::board::Challengee::{LightUser, StockFish};
 
+use shakmaty::{Chess, Position};
+use shakmaty::uci::{Uci, IllegalUciError};
+use shakmaty::fen;
+
+pub fn make_uci_moves(ucis_str: &str) -> Result<String, Box<dyn std::error::Error>> {
+	let mut pos = Chess::default();
+	if ucis_str.len() > 0 {
+		for uci_str in ucis_str.split(" ") {
+			let uci: Uci = uci_str.parse()?;						
+			let m = uci.to_move(&pos.to_owned())?;		
+			match pos.to_owned().play(&m) {
+				Ok(newpos) => pos = newpos,
+				Err(_) => return Err(Box::new(IllegalUciError)),
+			}		
+		}
+	}
+	Ok(fen::fen(&pos))
+}
+
 /// lichess bot
 pub struct LichessBot {
 	lichess: Lichess
@@ -72,6 +91,10 @@ impl LichessBot {
 			}
 
 			let state = state_opt.unwrap();
+
+			let fen = make_uci_moves(state.moves.as_str())?;
+
+			println!("fen {}", fen);
 
 			println!("state {:?}", state);
 		}
