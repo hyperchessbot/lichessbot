@@ -24,6 +24,7 @@ features = ["full"]
 
 [dependencies.licorice]
 git = "https://gitlab.com/icp1994/licorice"
+rev = "3403a7e8"
 
 [[bin]]
 name = "example"
