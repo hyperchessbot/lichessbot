@@ -3,9 +3,12 @@ use licoricedev::client::{Lichess};
 use licoricedev::models::board::{Event, BoardState};
 use licoricedev::models::board::Challengee::{LightUser, StockFish};
 
-use shakmaty::{Chess, Position};
+use shakmaty::{Chess, Position, Color};
 use shakmaty::uci::{Uci, IllegalUciError};
 use shakmaty::fen;
+use shakmaty::fen::Fen;
+
+use rand::prelude::*;
 
 pub fn make_uci_moves(ucis_str: &str) -> Result<String, Box<dyn std::error::Error>> {
 	let mut pos = Chess::default();
@@ -95,6 +98,33 @@ impl LichessBot {
 			let fen = make_uci_moves(state.moves.as_str())?;
 
 			println!("fen {}", fen);
+
+			let setup: Fen = fen.parse()?;
+			let pos: Chess = setup.position(shakmaty::CastlingMode::Standard)?;
+
+			let legals = pos.legals();
+
+			let rand_move = legals.choose(&mut rand::thread_rng()).unwrap();
+
+			let rand_uci = Uci::from_standard(&rand_move).to_string();
+
+			println!("rand uci {}", rand_uci);
+
+			let turn = setup.turn;
+
+			println!("turn {:?}", turn);
+
+			let bot_turn = ( ( turn == Color::White ) && bot_white ) || ( ( turn == Color::Black ) && !bot_white );
+
+			println!("bot turn {}", bot_turn);
+
+			if bot_turn {
+				let id = game_id.to_owned();
+
+				let result = self.lichess.make_a_bot_move(id.as_str(), rand_uci.as_str(), false).await;
+
+				println!("make move result {:?}", result);
+			}
 
 			println!("state {:?}", state);
 		}
