@@ -10,19 +10,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
 	dotenv().ok();
 	env_logger::init();
 
-	let lichess = Lichess::default();
+	let lichess = Lichess::new(std::env::var("RUST_BOT_TOKEN").unwrap());
+	
+	let mut event_stream = lichess
+		.stream_incoming_events()
+		.await
+		.unwrap();
 
-	let query_params = vec![
-		("max", "10"),        
-	];
+	while let Some(event) = event_stream.try_next().await? {
+    	let event = event;
 
-	let mut stream = lichess
-		.export_all_games_json("chesshyperbot", Some(&query_params))
-		.await?;
-
-	while let Some(game) = stream.try_next().await? {
-		println!("{:?}", game);
-	}
+    	println!("event {:?}", event)
+    }
 
 	Ok(())
 }
