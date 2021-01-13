@@ -30,7 +30,9 @@ pub fn make_uci_moves(ucis_str: &str) -> Result<String, Box<dyn std::error::Erro
 /// lichess bot
 pub struct LichessBot {
 	/// lichess
-	pub lichess: Lichess,
+	pub lichess: Lichess,	
+	/// bot name
+	pub bot_name: String,
 	/// engine name
 	pub engine_name: String,
 }
@@ -41,6 +43,7 @@ impl LichessBot {
 	pub fn new() -> LichessBot {
 		LichessBot {
 			lichess: Lichess::new(std::env::var("RUST_BOT_TOKEN").unwrap()),
+			bot_name: std::env::var("RUST_BOT_NAME").unwrap(),
 			engine_name: std::env::var("RUST_BOT_ENGINE_NAME").unwrap(),
 		}
 	}
@@ -62,8 +65,7 @@ impl LichessBot {
 			println!("{:?}", game_event);
 
 			let white:String;
-			let black:String;
-			let bot = std::env::var("RUST_BOT_NAME").unwrap();				
+			let black:String;			
 			
 			let state_opt = match game_event {
 				BoardState::GameFull ( game_full ) => {
@@ -79,7 +81,7 @@ impl LichessBot {
 						StockFish(sf) => format!("Stockfish AI level {}", sf.ai_level)
 					};
 					
-					if bot == black {
+					if self.bot_name == black {
 						bot_white = false;
 					}
 					
