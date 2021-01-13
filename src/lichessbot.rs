@@ -167,6 +167,8 @@ impl LichessBot {
 			}
 		}
 
+		engine.quit();
+
 		Ok(())
 	}
 
