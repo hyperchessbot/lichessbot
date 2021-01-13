@@ -49,7 +49,7 @@ example
 
 `RUST_BOT_NAME=chesshyperbot`
 
-## Engine name
+## Engine name ( optional )
 
 `RUST_BOT_ENGINE_NAME={engine executable name}`
 
@@ -58,3 +58,5 @@ examples
 Linux `RUST_BOT_ENGINE_NAME=./stockfish12`
 
 Windows `RUST_BOT_ENGINE_NAME=stockfish12.exe`
+
+If no engine name is provided, random moves will be played.
