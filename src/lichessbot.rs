@@ -41,6 +41,8 @@ pub struct LichessBot {
 	pub bot_name: String,
 	/// engine executable name ( optional )
 	pub engine_name: Option<String>,
+	/// uci options
+	pub uci_options: std::collections::HashMap<String, String>,
 }
 
 /// lichess bot implementation
@@ -51,7 +53,19 @@ impl LichessBot {
 			lichess: Lichess::new(std::env::var("RUST_BOT_TOKEN").unwrap()),
 			bot_name: std::env::var("RUST_BOT_NAME").unwrap(),
 			engine_name: std::env::var("RUST_BOT_ENGINE_NAME").ok(),
+			uci_options: std::collections::HashMap::new(),
 		}
+	}
+
+	/// add uci option
+	pub fn uci_opt<K, V>(mut self, key: K, value: V) -> LichessBot
+	where K: core::fmt::Display, V: core::fmt::Display {
+		let key = key.to_string();
+		let value = value.to_string();
+
+		self.uci_options.insert(key, value);
+
+		self
 	}
 
 	/// play game
@@ -83,6 +97,8 @@ impl LichessBot {
 				None
 			}
 		};
+
+		let mut ponder:Option<String> = None;
 		
 		while let Some(game_event) = game_stream.try_next().await? {
 			if log_enabled!(Level::Debug) {
@@ -189,11 +205,81 @@ impl LichessBot {
 								})
 							;
 
-							if log_enabled!(Level::Info) {
-								info!("engine start thinking on {:?}", go_job);
+							let mut ponderhit = false;
+							let mut pondermiss = false;
+
+							if ( state.moves.len() > 0 ) && ( ponder.is_some() ) {
+								// check ponder
+								let mut moves_array:Vec<&str> = state.moves.split(" ").collect();
+
+								let last_uci = moves_array.pop().unwrap();
+
+								if log_enabled!(Level::Info) {
+									info!("incoming uci {}", last_uci);
+								}
+
+								ponderhit = match ponder {
+									Some(ref uci) => {
+										if log_enabled!(Level::Info) {
+											info!("expected uci {}", uci);
+										}
+
+										last_uci == uci
+									},
+									_ => false
+								};
+
+								pondermiss = !ponderhit;
 							}
 
-							let go_result = engine.clone().unwrap().go(go_job).recv().await;
+							let go_result = match ponderhit || pondermiss {
+								true => {
+									if log_enabled!(Level::Info) {
+										info!("ponderhit {} pondermiss {}", ponderhit, pondermiss);
+									}
+
+									if pondermiss {
+										if log_enabled!(Level::Info) {
+											info!("pondermiss, stopping engine");
+										}
+
+										let _ = engine.clone().unwrap().go(GoJob::new().pondermiss()).recv().await;
+
+										if log_enabled!(Level::Info) {
+											info!("engine start from scratch thinking on {:?}", go_job);
+										}
+
+										engine.clone().unwrap().go(go_job).recv().await
+									}else{
+										if log_enabled!(Level::Info) {
+											info!("ponderhit, waiting for result");
+										}
+
+										engine.clone().unwrap().go(GoJob::new().ponderhit()).recv().await
+									}
+								},
+								_ => {
+									if log_enabled!(Level::Info) {
+										info!("engine start thinking on {:?}", go_job);
+									}
+
+									let mut go_job = go_job;
+
+									for (key, value) in &self.uci_options {
+										if log_enabled!(Level::Info) {
+											info!("adding uci option {} = {}", key, value);
+										}
+
+										go_job = go_job.uci_opt(key, value);
+									}
+
+									if log_enabled!(Level::Debug) {
+										debug!("mounted go job {:?}", go_job);
+									}
+
+									engine.clone().unwrap().go(go_job).recv().await
+								}
+							};
 
 							if log_enabled!(Level::Debug) {
 								debug!("thinking result {:?}", go_result);
@@ -202,6 +288,42 @@ impl LichessBot {
 							if let Some(go_result) = go_result {
 								if let Some(bm) = go_result.bestmove {
 									bestmove = bm;
+								}
+
+								if log_enabled!(Level::Debug) {
+									debug!("ponder before {:?}", ponder);
+								}
+
+								ponder = go_result.ponder;
+
+								if log_enabled!(Level::Info) {
+									info!("set ponder to {:?}", ponder);
+								}
+
+								if let Some(ref uci) = ponder {
+									let new_moves = match state.moves.as_str() {
+										"" => format!("{} {}", bestmove, uci),
+										_ => format!("{} {} {}", state.moves, bestmove, uci)
+									};
+
+									if log_enabled!(Level::Info) {
+										info!("start pondering on {}", new_moves);
+									}
+
+									let go_job_ponder = GoJob::new()
+											.uci_opt("UCI_Variant", "chess")
+											.pos_startpos()
+											.pos_moves(new_moves)
+											.ponder()
+											.tc(Timecontrol{
+												wtime: state.wtime as usize,
+												winc: state.winc as usize,
+												btime: state.btime as usize,
+												binc: state.binc as usize
+											})
+										;
+
+									let _ = engine.clone().unwrap().go(go_job_ponder);
 								}
 							}
 						} else {
