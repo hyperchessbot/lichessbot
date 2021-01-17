@@ -232,6 +232,8 @@ impl LichessBot {
 								pondermiss = !ponderhit;
 							}
 
+							let elapsed:u128;
+
 							let go_result = match ponderhit || pondermiss {
 								true => {
 									if log_enabled!(Level::Info) {
@@ -243,19 +245,31 @@ impl LichessBot {
 											info!("pondermiss, stopping engine");
 										}
 
+										let start = std::time::Instant::now();
+
 										let _ = engine.clone().unwrap().go(GoJob::new().pondermiss()).recv().await;
 
 										if log_enabled!(Level::Info) {
 											info!("engine start from scratch thinking on {:?}", go_job);
 										}
 
-										engine.clone().unwrap().go(go_job).recv().await
+										let result = engine.clone().unwrap().go(go_job).recv().await;
+
+										elapsed = start.elapsed().as_millis();
+
+										result
 									}else{
 										if log_enabled!(Level::Info) {
 											info!("ponderhit, waiting for result");
 										}
 
-										engine.clone().unwrap().go(GoJob::new().ponderhit()).recv().await
+										let start = std::time::Instant::now();
+
+										let result = engine.clone().unwrap().go(GoJob::new().ponderhit()).recv().await;
+
+										elapsed = start.elapsed().as_millis();
+
+										result
 									}
 								},
 								_ => {
@@ -277,12 +291,43 @@ impl LichessBot {
 										debug!("mounted go job {:?}", go_job);
 									}
 
-									engine.clone().unwrap().go(go_job).recv().await
+									let start = std::time::Instant::now();
+
+									let result = engine.clone().unwrap().go(go_job).recv().await;
+
+									elapsed = start.elapsed().as_millis();
+
+									result
 								}
 							};
 
 							if log_enabled!(Level::Debug) {
-								debug!("thinking result {:?}", go_result);
+								debug!("thinking took {} ms , result {:?}", elapsed, go_result);
+							}
+
+							let mut eff_wtime = state.wtime as i32;
+							let mut eff_btime = state.btime as i32;
+
+							if bot_white {
+								eff_wtime -= elapsed as i32;
+
+								if eff_wtime < 0 {
+									eff_wtime = 100;
+								}
+
+								if log_enabled!(Level::Info) {
+									info!("changing wtime from {} to {}", state.wtime, eff_wtime);
+								}
+							} else {
+								eff_btime -= elapsed as i32;
+
+								if eff_btime < 0 {
+									eff_btime = 100;
+								}
+
+								if log_enabled!(Level::Info) {
+									info!("changing btime from {} to {}", state.btime, eff_btime);
+								}
 							}
 
 							if let Some(go_result) = go_result {
@@ -316,9 +361,9 @@ impl LichessBot {
 											.pos_moves(new_moves)
 											.ponder()
 											.tc(Timecontrol{
-												wtime: state.wtime as usize,
+												wtime: eff_wtime as usize,
 												winc: state.winc as usize,
-												btime: state.btime as usize,
+												btime: eff_btime as usize,
 												binc: state.binc as usize
 											})
 										;
@@ -351,6 +396,10 @@ impl LichessBot {
 		}
 
 		if engine.is_some() {
+			// stop engine before quitting
+			let _ = engine.clone().unwrap().go(GoJob::new().custom("stop"));
+
+			// quit engine
 			engine.unwrap().quit();
 		}
 

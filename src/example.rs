@@ -10,6 +10,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
 	env_logger::init();
 
 	let mut bot = LichessBot::new()
+		.uci_opt("Move Overhead", 500)
 		.uci_opt("Threads", 4)
 		.uci_opt("Hash", 128)
 		.uci_opt("Contempt", -25);
