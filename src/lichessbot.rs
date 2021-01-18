@@ -43,7 +43,46 @@ pub struct LichessBot {
 	pub engine_name: Option<String>,
 	/// uci options
 	pub uci_options: std::collections::HashMap<String, String>,
+	/// enable classical
+	pub enable_classical: bool,
+	/// enable rapid
+	pub enable_rapid: bool,
+	/// disable blitz
+	pub disable_blitz: bool,
+	/// disable bullet
+	pub disable_bullet: bool,
+	/// enable ultrabullet
+	pub enable_ultrabullet: bool,
+	/// enable casual
+	pub enable_casual: bool,
+	/// disable rated
+	pub disable_rated: bool,
 }
+
+macro_rules! gen_set_props {
+	($($prop:ident),*) => {
+		$(
+			impl LichessBot {
+				/// create new lichess bot
+				pub fn $prop(mut self, value: bool) -> LichessBot{
+					self.$prop = value;
+
+					self
+				}
+			}
+		)*
+	}
+}
+
+gen_set_props!(
+	enable_classical,
+	enable_rapid,
+	disable_blitz,
+	disable_bullet,
+	enable_ultrabullet,
+	enable_casual,
+	disable_rated
+);
 
 /// lichess bot implementation
 impl LichessBot {
@@ -54,6 +93,13 @@ impl LichessBot {
 			bot_name: std::env::var("RUST_BOT_NAME").unwrap(),
 			engine_name: std::env::var("RUST_BOT_ENGINE_NAME").ok(),
 			uci_options: std::collections::HashMap::new(),
+			enable_classical: false,
+			enable_rapid: false,
+			disable_blitz: false,
+			disable_bullet: false,
+			enable_ultrabullet: false,
+			enable_casual: false,
+			disable_rated: false,
 		}
 	}
 
@@ -424,10 +470,77 @@ impl LichessBot {
 							info!("rejecting challenge, correspondence");
 						}
 					} else {
-						if log_enabled!(Level::Info) {
-							info!("accepting challenge, response {:?}",
-								self.lichess.challenge_accept(&challenge.id).await);															}
+						let mut challenge_ok = true;
+
+						let mut decline_reasons:Vec<String> = vec!();
+
+						if challenge.speed == "classical" {
+							if !self.enable_classical {
+								challenge_ok = false;
+
+								decline_reasons.push(format!("{}", "wrong speed ( classical )"));
+							}
 						}
+
+						if challenge.speed == "rapid" {
+							if !self.enable_rapid {
+								challenge_ok = false;
+
+								decline_reasons.push(format!("{}", "wrong speed ( rapid )"));
+							}
+						}
+
+						if challenge.speed == "blitz" {
+							if self.disable_blitz {
+								challenge_ok = false;
+
+								decline_reasons.push(format!("{}", "wrong speed ( blitz )"));
+							}
+						}
+
+						if challenge.speed == "bullet" {
+							if self.disable_bullet {
+								challenge_ok = false;
+
+								decline_reasons.push(format!("{}", "wrong speed ( bullet )"));
+							}
+						}
+
+						if challenge.speed == "ultrabullet" {
+							if !self.enable_ultrabullet {
+								challenge_ok = false;
+
+								decline_reasons.push(format!("{}", "wrong speed ( ultrabullet )"));
+							}
+						}
+
+						if challenge.rated {
+							if self.disable_rated {
+								challenge_ok = false;
+
+								decline_reasons.push(format!("{}", "wrong mode ( rated )"));
+							}
+						}
+
+						if !challenge.rated {
+							if !self.enable_casual {
+								challenge_ok = false;
+
+								decline_reasons.push(format!("{}", "wrong mode ( casual )"));
+							}
+						}
+
+						if challenge_ok {
+							if log_enabled!(Level::Info) {
+								info!("accepting challenge, response {:?}",
+									self.lichess.challenge_accept(&challenge.id).await);																							
+							}
+						} else {
+							if log_enabled!(Level::Info) {
+								info!("declining challenge {:?}", decline_reasons);									
+							}
+						}		
+					}
 				} else {
 					if log_enabled!(Level::Info) {
 						info!("rejecting challenge, wrong variant {}", challenge.variant.key);
