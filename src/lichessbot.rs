@@ -13,9 +13,11 @@ use shakmaty::fen::Fen;
 use rand::prelude::*;
 
 use uciengine::uciengine::*;
+use pgnparse::parser::*;
+use envor::envor::*;
 
 /// make uci moves from starting position and return fen of resulting position
-pub fn make_uci_moves<T>(ucis_str: T) -> Result<String, Box<dyn std::error::Error>>
+pub fn make_uci_moves<T>(ucis_str: T) -> Result<(String, String), Box<dyn std::error::Error>>
 where T: core::fmt::Display {
 	let ucis_str = format!("{}", ucis_str);
 
@@ -30,7 +32,7 @@ where T: core::fmt::Display {
 			}		
 		}
 	}
-	Ok(fen::fen(&pos))
+	Ok((fen::fen(&pos), fen::epd(&pos)))
 }
 
 /// lichess bot
@@ -57,6 +59,8 @@ pub struct LichessBot {
 	pub enable_casual: bool,
 	/// disable rated
 	pub disable_rated: bool,
+	/// book
+	pub book: Book,
 }
 
 macro_rules! gen_set_props {
@@ -88,6 +92,10 @@ gen_set_props!(
 impl LichessBot {
 	/// create new lichess bot
 	pub fn new() -> LichessBot {
+		let mut book = Book::new();
+
+		book.parse(env_string_or("BOOK_PGN", "book.pgn"));
+
 		LichessBot {
 			lichess: Lichess::new(std::env::var("RUST_BOT_TOKEN").unwrap()),
 			bot_name: std::env::var("RUST_BOT_NAME").unwrap(),
@@ -100,6 +108,7 @@ impl LichessBot {
 			enable_ultrabullet: false,
 			enable_casual: false,
 			disable_rated: false,
+			book: book,
 		}
 	}
 
@@ -199,7 +208,7 @@ impl LichessBot {
 					debug!("game state {:?}", state);
 				}
 
-				let fen = make_uci_moves(state.moves.as_str())?;
+				let (fen, epd) = make_uci_moves(state.moves.as_str())?;
 
 				if log_enabled!(Level::Debug) {
 					debug!("fen of current position {}", fen);
@@ -234,9 +243,25 @@ impl LichessBot {
 					if bot_turn {
 						let mut bestmove = rand_uci;
 
+						let pos = self.book.positions.get(&epd);
+
+						let mut has_book_move = false;
+
+						if let Some(pos) = pos {
+							if let Some(m) = pos.get_random_weighted() {
+								bestmove = m.uci.to_owned();
+
+								has_book_move = true;
+
+								if log_enabled!(Level::Info) {
+									info!("book move found {}", bestmove);
+								}
+							}
+						}
+
 						let id = game_id.to_owned();
 
-						if engine.is_some() {
+						if engine.is_some() && (!has_book_move) {
 							let moves = format!("{}", state.moves);
 
 							let go_job = GoJob::new()
