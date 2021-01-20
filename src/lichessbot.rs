@@ -94,9 +94,11 @@ impl LichessBot {
 	pub fn new() -> LichessBot {
 		let mut book = Book::new();
 
-		book.parse(env_string_or("BOOK_PGN", "book.pgn"));
+		book.parse(env_string_or("RUST_BOT_BOOK_PGN", "book.pgn"));
 
-		LichessBot {
+		let max_book_depth:usize = env_or("RUST_BOT_BOOK_DEPTH", 20);
+
+		let bot = LichessBot {
 			lichess: Lichess::new(std::env::var("RUST_BOT_TOKEN").unwrap()),
 			bot_name: std::env::var("RUST_BOT_NAME").unwrap(),
 			engine_name: std::env::var("RUST_BOT_ENGINE_NAME").ok(),
@@ -109,7 +111,21 @@ impl LichessBot {
 			enable_casual: false,
 			disable_rated: false,
 			book: book,
+		}.max_book_depth(max_book_depth);
+
+		if log_enabled!(Level::Info) {
+			info!("max book depth {}", bot.book.max_depth);
 		}
+
+		bot
+	}
+
+	/// set max book depth
+	pub fn max_book_depth<T>(mut self, max_book_depth: T) -> LichessBot
+	where T: core::fmt::Display {
+		self.book = self.book.max_depth(max_book_depth);
+
+		self
 	}
 
 	/// add uci option
@@ -248,7 +264,13 @@ impl LichessBot {
 						let mut has_book_move = false;
 
 						if let Some(pos) = pos {
-							if let Some(m) = pos.get_random_weighted() {
+							let mixed:usize = env_or("RUST_BOT_MIXED", 50);
+
+							if log_enabled!(Level::Info) {
+								info!("searching for random move by mixed {}", mixed);
+							}
+
+							if let Some(m) = pos.get_random_mixed(mixed) {
 								bestmove = m.uci.to_owned();
 
 								has_book_move = true;
