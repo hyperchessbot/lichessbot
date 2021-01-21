@@ -94,15 +94,11 @@ impl LichessBot {
 	pub fn new() -> LichessBot {
 		let bot_name = std::env::var("RUST_BOT_NAME").unwrap();
 
-		let mut book = Book::new().me(bot_name.to_owned());
-
-		book.parse(env_string_or("RUST_BOT_BOOK_PGN", "book.pgn"));
-
 		let max_book_depth:usize = env_or("RUST_BOT_BOOK_DEPTH", 20);
 
-		let bot = LichessBot {
+		let mut bot = LichessBot {
 			lichess: Lichess::new(std::env::var("RUST_BOT_TOKEN").unwrap()),
-			bot_name: bot_name,
+			bot_name: bot_name.to_owned(),
 			engine_name: std::env::var("RUST_BOT_ENGINE_NAME").ok(),
 			uci_options: std::collections::HashMap::new(),
 			enable_classical: false,
@@ -112,8 +108,10 @@ impl LichessBot {
 			enable_ultrabullet: false,
 			enable_casual: false,
 			disable_rated: false,
-			book: book,
+			book: Book::new().me(bot_name.to_owned()),
 		}.max_book_depth(max_book_depth);
+
+		bot.book.parse(env_string_or("RUST_BOT_BOOK_PGN", "book.pgn"));
 
 		if log_enabled!(Level::Info) {
 			info!("max book depth {}", bot.book.max_depth);
