@@ -4,7 +4,7 @@ Cargo.lock
 .env
 
 *.pgn
+*.exe
 
 p.bat
 
-*.exe

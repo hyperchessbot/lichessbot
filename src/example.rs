@@ -17,6 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
 		.enable_classical(false)
 		.enable_rapid(false)
 		.disable_blitz(false)
+		.disable_bullet(false)
 		.enable_ultrabullet(false)
 		.enable_casual(true)
 		.disable_rated(false)

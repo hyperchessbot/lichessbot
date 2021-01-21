@@ -92,7 +92,9 @@ gen_set_props!(
 impl LichessBot {
 	/// create new lichess bot
 	pub fn new() -> LichessBot {
-		let mut book = Book::new();
+		let bot_name = std::env::var("RUST_BOT_NAME").unwrap();
+
+		let mut book = Book::new().me(bot_name.to_owned());
 
 		book.parse(env_string_or("RUST_BOT_BOOK_PGN", "book.pgn"));
 
@@ -100,7 +102,7 @@ impl LichessBot {
 
 		let bot = LichessBot {
 			lichess: Lichess::new(std::env::var("RUST_BOT_TOKEN").unwrap()),
-			bot_name: std::env::var("RUST_BOT_NAME").unwrap(),
+			bot_name: bot_name,
 			engine_name: std::env::var("RUST_BOT_ENGINE_NAME").ok(),
 			uci_options: std::collections::HashMap::new(),
 			enable_classical: false,
@@ -264,7 +266,7 @@ impl LichessBot {
 						let mut has_book_move = false;
 
 						if let Some(pos) = pos {
-							let mixed:usize = env_or("RUST_BOT_MIXED", 50);
+							let mixed:usize = env_or("RUST_BOT_MIXED", 90);
 
 							if log_enabled!(Level::Info) {
 								info!("searching for random move by mixed {}", mixed);
