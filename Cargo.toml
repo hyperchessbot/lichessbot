@@ -1,6 +1,6 @@
 [package]
 name = "lichessbot"
-version = "0.1.26"
+version = "0.1.27"
 authors = ["hyperchessbot <hyperchessbot@gmail.com>"]
 edition = "2018"
 keywords = ["lichess", "bot"]
@@ -8,7 +8,7 @@ description = "Lichess bot. Under construction."
 license = "MIT"
 repository = "https://github.com/hyperchessbot/lichessbot"
 homepage = "https://github.com/hyperchessbot/lichessbot#lichessbot"
-documentation = "https://docs.rs/lichessbot/0.1.26"
+documentation = "https://docs.rs/lichessbot/0.1.27"
 readme = "ReadMe.md"
 
 [dependencies]
