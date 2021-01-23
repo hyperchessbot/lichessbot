@@ -68,7 +68,7 @@ pub struct LichessBot {
 	/// book
 	pub book: Book,
 	/// state
-	pub state: std::sync::Arc<std::sync::Mutex<BotState>>,
+	pub state: std::sync::Arc<tokio::sync::Mutex<BotState>>,
 }
 
 macro_rules! gen_set_props {
@@ -117,7 +117,7 @@ impl LichessBot {
 			enable_casual: false,
 			disable_rated: false,
 			book: Book::new().me(bot_name.to_owned()),
-			state: std::sync::Arc::new(std::sync::Mutex::new(BotState{current_fen: None}))
+			state: std::sync::Arc::new(tokio::sync::Mutex::new(BotState{current_fen: None}))
 		}.max_book_depth(max_book_depth);
 
 		bot.book.parse(env_string_or("RUST_BOT_BOOK_PGN", "book.pgn"));
@@ -236,7 +236,7 @@ impl LichessBot {
 				let (fen, epd) = make_uci_moves(state.moves.as_str())?;
 
 				let self_state_clone = self.state.clone();
-				let mut self_state = self_state_clone.lock().unwrap();
+				let mut self_state = self_state_clone.lock().await;
     			self_state.current_fen = Some(fen.to_owned());
     			drop(self_state);
 
