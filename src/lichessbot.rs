@@ -36,6 +36,7 @@ where T: core::fmt::Display {
 }
 
 /// bot state
+#[derive(Debug)]
 pub struct BotState {
 	/// current fen
 	pub current_fen: Option<String>
