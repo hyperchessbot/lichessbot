@@ -35,6 +35,12 @@ where T: core::fmt::Display {
 	Ok((fen::fen(&pos), fen::epd(&pos)))
 }
 
+/// bot state
+pub struct BotState {
+	/// current fen
+	pub current_fen: Option<String>
+}
+
 /// lichess bot
 pub struct LichessBot {
 	/// lichess client
@@ -61,6 +67,8 @@ pub struct LichessBot {
 	pub disable_rated: bool,
 	/// book
 	pub book: Book,
+	/// state
+	pub state: std::sync::Arc<std::sync::Mutex<BotState>>,
 }
 
 macro_rules! gen_set_props {
@@ -109,6 +117,7 @@ impl LichessBot {
 			enable_casual: false,
 			disable_rated: false,
 			book: Book::new().me(bot_name.to_owned()),
+			state: std::sync::Arc::new(std::sync::Mutex::new(BotState{current_fen: None}))
 		}.max_book_depth(max_book_depth);
 
 		bot.book.parse(env_string_or("RUST_BOT_BOOK_PGN", "book.pgn"));
@@ -225,6 +234,11 @@ impl LichessBot {
 				}
 
 				let (fen, epd) = make_uci_moves(state.moves.as_str())?;
+
+				let self_state_clone = self.state.clone();
+				let mut self_state = self_state_clone.lock().unwrap();
+    			self_state.current_fen = Some(fen.to_owned());
+    			drop(self_state);
 
 				if log_enabled!(Level::Debug) {
 					debug!("fen of current position {}", fen);
