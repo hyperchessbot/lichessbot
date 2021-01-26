@@ -1,3 +1,5 @@
+use log::{log_enabled, info, Level};
+
 extern crate env_logger;
 
 use dotenv::dotenv;
@@ -9,7 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
 	dotenv().ok();
 	env_logger::init();
 
-	let mut bot = LichessBot::new()
+	let bot = Box::leak(Box::new(LichessBot::new()
 		.uci_opt("Move Overhead", 500)
 		.uci_opt("Threads", 4)
 		.uci_opt("Hash", 128)
@@ -21,7 +23,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
 		.enable_ultrabullet(false)
 		.enable_casual(true)
 		.disable_rated(false)
-	;
+	));
 
-	bot.stream().await
+	
+	if log_enabled!(Level::Info){
+		info!("starting bot stream");
+	}
+
+	let (tx, mut rxa) = bot.stream().await;
+
+	tokio::time::sleep(tokio::time::Duration::from_millis(3000)).await;
+
+	let _ = tx.send(()).await;
+
+	let result = rxa.recv().await;
+
+	if log_enabled!(Level::Info) {
+		info!("stop stream result {:?}", result);
+	}
+
+	Ok(())
 }

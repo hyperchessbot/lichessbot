@@ -36,10 +36,46 @@ where T: core::fmt::Display {
 }
 
 /// bot state
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BotState {
 	/// current fen
-	pub current_fen: Option<String>
+	pub current_fen: Option<String>,
+	/// engine thinking
+	pub engine_thinking: bool,
+	/// streaming
+	pub streaming: bool,
+}
+
+/// bot state implementation
+impl BotState {
+	pub fn default() -> BotState {
+		BotState {
+			current_fen: None,
+			engine_thinking: false,
+			streaming: false,
+		}
+	}
+
+	/// set current fen
+	pub fn set_current_fen(mut self, fen: Option<String>) -> BotState {
+		self.current_fen = fen;
+
+		self
+	}
+
+	/// set engine thinking
+	pub fn set_engine_thinking(mut self, engine_thinking: bool) -> BotState {
+		self.engine_thinking = engine_thinking;
+
+		self
+	}
+
+	/// set streaming
+	pub fn set_streaming(mut self, streaming: bool) -> BotState {
+		self.streaming = streaming;
+
+		self
+	}
 }
 
 /// lichess bot
@@ -69,7 +105,7 @@ pub struct LichessBot {
 	/// book
 	pub book: Book,
 	/// state
-	pub state: std::sync::Arc<tokio::sync::Mutex<BotState>>,
+	pub state: std::sync::Arc<tokio::sync::Mutex<BotState>>,			
 }
 
 macro_rules! gen_set_props {
@@ -118,7 +154,7 @@ impl LichessBot {
 			enable_casual: false,
 			disable_rated: false,
 			book: Book::new().me(bot_name.to_owned()),
-			state: std::sync::Arc::new(tokio::sync::Mutex::new(BotState{current_fen: None}))
+			state: std::sync::Arc::new(tokio::sync::Mutex::new(BotState::default())),									
 		}.max_book_depth(max_book_depth);
 
 		bot.book.parse(env_string_or("RUST_BOT_BOOK_PGN", "book.pgn"));
@@ -236,10 +272,7 @@ impl LichessBot {
 
 				let (fen, epd) = make_uci_moves(state.moves.as_str())?;
 
-				let self_state_clone = self.state.clone();
-				let mut self_state = self_state_clone.lock().await;
-    			self_state.current_fen = Some(fen.to_owned());
-    			drop(self_state);
+				let _ = self.set_state(self.get_state().await.set_current_fen(Some(fen.to_owned()))).await;
 
 				if log_enabled!(Level::Debug) {
 					debug!("fen of current position {}", fen);
@@ -299,6 +332,8 @@ impl LichessBot {
 						let id = game_id.to_owned();
 
 						if engine.is_some() && (!has_book_move) {
+							let _ = self.set_state(self.get_state().await.set_engine_thinking(true)).await;
+
 							let moves = format!("{}", state.moves);
 
 							let go_job = GoJob::new()
@@ -485,6 +520,8 @@ impl LichessBot {
 							}
 						}
 
+						let _ = self.set_state(self.get_state().await.set_engine_thinking(false)).await;
+
 						if log_enabled!(Level::Info) {
 							info!("making move {}", bestmove);
 						}
@@ -593,9 +630,10 @@ impl LichessBot {
 						}
 
 						if challenge_ok {
+							let accept_response = self.lichess.challenge_accept(&challenge.id).await;
+
 							if log_enabled!(Level::Info) {
-								info!("accepting challenge, response {:?}",
-									self.lichess.challenge_accept(&challenge.id).await);																							
+								info!("accepting challenge, response {:?}", accept_response);
 							}
 						} else {
 							if log_enabled!(Level::Info) {
@@ -632,8 +670,8 @@ impl LichessBot {
 		Ok(())
 	}
 
-	/// stream events
-	pub async fn stream(&mut self) -> Result<(), Box::<dyn std::error::Error>> {
+	/// stream events task
+	async fn stream_task(&mut self) -> Result<(), Box::<dyn std::error::Error>> {
 		let mut event_stream = self.lichess
 			.stream_incoming_events()
 			.await
@@ -644,5 +682,52 @@ impl LichessBot {
 	    }
 
 	    Ok(())
+	}
+
+	/// stream
+	pub async fn stream(&'static mut self) -> (tokio::sync::mpsc::Sender<()>, tokio::sync::mpsc::Receiver<String>) {
+		let _ = self.set_state(self.get_state().await.set_streaming(true)).await;
+
+		let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
+		let (txa, rxa) = tokio::sync::mpsc::channel::<String>(1);
+
+		tokio::spawn(async move {
+			let result = tokio::select! {
+				res = self.stream_task() => {
+					let result = format!("stream stopped on its own with result {:?}", res);
+
+					if log_enabled!(Level::Info){
+						info!("{}", result);
+					}
+
+					result
+				},
+				_ = rx.recv() => {
+					let result = format!("{}", "stream forced to stop");
+
+					if log_enabled!(Level::Info){
+						info!("{}", result);
+					}
+
+					result
+				}
+			};
+
+			let _ = txa.send(result).await;
+		});
+
+		(tx, rxa)
+	}
+
+	/// set state
+	pub async fn set_state(&self, state:BotState) {
+		let self_state_clone = self.state.clone();
+		let mut self_state = self_state_clone.lock().await;
+		*self_state = state;
+	}
+
+	/// get state
+	pub async fn get_state(&self) -> BotState {
+		self.state.lock().await.clone()
 	}
 }
