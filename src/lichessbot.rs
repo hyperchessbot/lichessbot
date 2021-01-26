@@ -685,16 +685,16 @@ impl LichessBot {
 	}
 
 	/// stream
-	pub async fn stream(&'static mut self) -> (tokio::sync::mpsc::Sender<()>, tokio::sync::mpsc::Receiver<String>) {
+	pub async fn stream(&'static mut self) -> (tokio::sync::mpsc::Sender<String>, tokio::sync::mpsc::Receiver<String>) {
 		let _ = self.set_state(self.get_state().await.set_streaming(true)).await;
 
-		let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
+		let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(1);
 		let (txa, rxa) = tokio::sync::mpsc::channel::<String>(1);
 
 		tokio::spawn(async move {
 			let result = tokio::select! {
 				res = self.stream_task() => {
-					let result = format!("stream stopped on its own with result {:?}", res);
+					let result = format!("stream stopped on its own [{:?}]", res);
 
 					if log_enabled!(Level::Info){
 						info!("{}", result);
@@ -702,8 +702,8 @@ impl LichessBot {
 
 					result
 				},
-				_ = rx.recv() => {
-					let result = format!("{}", "stream forced to stop");
+				res = rx.recv() => {
+					let result = format!("stream forced to stop [{:?}]", res);
 
 					if log_enabled!(Level::Info){
 						info!("{}", result);

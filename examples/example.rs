@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
 
 	tokio::time::sleep(tokio::time::Duration::from_millis(3000)).await;
 
-	let _ = tx.send(()).await;
+	let _ = tx.send("stopped by user".to_string()).await;
 
 	let result = rxa.recv().await;
 
