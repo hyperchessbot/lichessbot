@@ -191,6 +191,26 @@ impl LichessBot {
 			info!("playing game {}", game_id);
 		}
 
+		let game_id_owned = game_id.to_owned();
+
+		tokio::spawn(async move {
+			let game_id = game_id_owned;
+
+			tokio::time::sleep(tokio::time::Duration::from_millis(30000)).await;
+
+			if log_enabled!(Level::Info) {
+				info!("aborting game {}", game_id);
+			}
+
+			let lichess = Lichess::new(std::env::var("RUST_BOT_TOKEN").unwrap());
+
+			let result = lichess.abort_bot_game(game_id.as_str()).await;
+
+			if log_enabled!(Level::Info) {
+				info!("abort game result {:?}", result);
+			}
+		});		
+
 		let mut game_stream = self.lichess
 			.stream_bot_game_state(&game_id)
 			.await
@@ -252,7 +272,19 @@ impl LichessBot {
 					Some(game_full.state)
 				},
 				BoardState::GameState ( game_state ) => {
-					Some(game_state)
+					match game_state.status.as_str() {
+						"aborted" => {
+							// just an info, no processing is needed
+							if log_enabled!(Level::Info) {
+								info!("game info, no processing needed, status {:?}", game_state.status);
+							}
+
+							None
+						},
+						_ => {
+							Some(game_state)
+						}
+					}
 				},
 				_ => {
 					if log_enabled!(Level::Debug) {

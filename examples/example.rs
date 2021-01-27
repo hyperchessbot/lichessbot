@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
 
 	let (tx, mut rxa) = bot.stream().await;
 
-	tokio::time::sleep(tokio::time::Duration::from_millis(3000)).await;
+	tokio::time::sleep(tokio::time::Duration::from_millis(120000)).await;
 
 	let _ = tx.send("stopped by user".to_string()).await;
 
