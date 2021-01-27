@@ -595,89 +595,105 @@ impl LichessBot {
 					info!("incoming challenge {:?}", challenge.id);
 				}
 				
-				if challenge.variant.key == "standard" {
-					if challenge.speed == "correspondence" {
-						if log_enabled!(Level::Info) {
-							info!("rejecting challenge, correspondence");
-						}
-					} else {
-						let mut challenge_ok = true;
+				let mut challenge_ok = true;
 
-						let mut decline_reasons:Vec<String> = vec!();
+				let mut decline_reasons:Vec<String> = vec!();
 
-						if challenge.speed == "classical" {
-							if !self.enable_classical {
-								challenge_ok = false;
+				if challenge.variant.key != "standard" {
+					challenge_ok = false;
 
-								decline_reasons.push(format!("{}", "wrong speed ( classical )"));
-							}
-						}
+					decline_reasons.push(format!("wrong variant ( key {} , name {} )", challenge.variant.key, challenge.variant.name));
+				}
 
-						if challenge.speed == "rapid" {
-							if !self.enable_rapid {
-								challenge_ok = false;
+				if challenge.speed == "correspondence" {
+					challenge_ok = false;
 
-								decline_reasons.push(format!("{}", "wrong speed ( rapid )"));
-							}
-						}
+					decline_reasons.push(format!("{}", "wrong speed ( correspondence )"));
+				}
 
-						if challenge.speed == "blitz" {
-							if self.disable_blitz {
-								challenge_ok = false;
+				if challenge.speed == "classical" {
+					if !self.enable_classical {
+						challenge_ok = false;
 
-								decline_reasons.push(format!("{}", "wrong speed ( blitz )"));
-							}
-						}
+						decline_reasons.push(format!("{}", "wrong speed ( classical )"));
+					}
+				}
 
-						if challenge.speed == "bullet" {
-							if self.disable_bullet {
-								challenge_ok = false;
+				if challenge.speed == "rapid" {
+					if !self.enable_rapid {
+						challenge_ok = false;
 
-								decline_reasons.push(format!("{}", "wrong speed ( bullet )"));
-							}
-						}
+						decline_reasons.push(format!("{}", "wrong speed ( rapid )"));
+					}
+				}
 
-						if challenge.speed == "ultrabullet" {
-							if !self.enable_ultrabullet {
-								challenge_ok = false;
+				if challenge.speed == "blitz" {
+					if self.disable_blitz {
+						challenge_ok = false;
 
-								decline_reasons.push(format!("{}", "wrong speed ( ultrabullet )"));
-							}
-						}
+						decline_reasons.push(format!("{}", "wrong speed ( blitz )"));
+					}
+				}
 
-						if challenge.rated {
-							if self.disable_rated {
-								challenge_ok = false;
+				if challenge.speed == "bullet" {
+					if self.disable_bullet {
+						challenge_ok = false;
 
-								decline_reasons.push(format!("{}", "wrong mode ( rated )"));
-							}
-						}
+						decline_reasons.push(format!("{}", "wrong speed ( bullet )"));
+					}
+				}
 
-						if !challenge.rated {
-							if !self.enable_casual {
-								challenge_ok = false;
+				if challenge.speed == "ultrabullet" {
+					if !self.enable_ultrabullet {
+						challenge_ok = false;
 
-								decline_reasons.push(format!("{}", "wrong mode ( casual )"));
-							}
-						}
+						decline_reasons.push(format!("{}", "wrong speed ( ultrabullet )"));
+					}
+				}
 
-						if challenge_ok {
-							let accept_response = self.lichess.challenge_accept(&challenge.id).await;
+				if challenge.rated {
+					if self.disable_rated {
+						challenge_ok = false;
 
-							if log_enabled!(Level::Info) {
-								info!("accepting challenge, response {:?}", accept_response);
-							}
-						} else {
-							if log_enabled!(Level::Info) {
-								info!("declining challenge {:?}", decline_reasons);									
-							}
-						}		
+						decline_reasons.push(format!("{}", "wrong mode ( rated )"));
+					}
+				}
+
+				if !challenge.rated {
+					if !self.enable_casual {
+						challenge_ok = false;
+
+						decline_reasons.push(format!("{}", "wrong mode ( casual )"));
+					}
+				}
+
+				if challenge_ok {
+					let accept_response = self.lichess.challenge_accept(&challenge.id).await;
+
+					if log_enabled!(Level::Info) {
+						info!("accepting challenge, response {:?}", accept_response);
 					}
 				} else {
 					if log_enabled!(Level::Info) {
-						info!("rejecting challenge, wrong variant {}", challenge.variant.key);
+						info!("declining challenge for reasons {:?}", decline_reasons);									
 					}
-				}
+
+					let challenge_id = format!("{}", challenge.id);
+
+					tokio::spawn(async move {
+						if log_enabled!(Level::Info) {
+							info!("declining challenge {}", challenge_id);
+						}
+
+						let lichess = Lichess::new(std::env::var("RUST_BOT_TOKEN").unwrap());
+
+						let result = lichess.challenge_decline(challenge_id.as_str()).await;
+
+						if log_enabled!(Level::Info) {
+							info!("decline challenge result {:?}", result);
+						}
+					});		
+				}	
 			},
 			Event::GameStart { game } => {
 				let game_id = format!("{}", game.id);
