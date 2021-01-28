@@ -33,7 +33,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
 		.enable_casual(true)
 		.disable_rated(false)
 	));
-
 	
 	if log_enabled!(Level::Info){
 		info!("starting bot stream");

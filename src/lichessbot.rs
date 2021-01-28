@@ -607,16 +607,22 @@ impl LichessBot {
 
 				let mut decline_reasons:Vec<String> = vec!();
 
+				let mut reason = "generic";
+
 				if challenge.variant.key != "standard" {
 					challenge_ok = false;
 
 					decline_reasons.push(format!("wrong variant ( key {} , name {} )", challenge.variant.key, challenge.variant.name));
+
+					reason = "variant";
 				}
 
 				if challenge.speed == "correspondence" {
 					challenge_ok = false;
 
 					decline_reasons.push(format!("{}", "wrong speed ( correspondence )"));
+
+					reason = "timeControl";
 				}
 
 				if challenge.speed == "classical" {
@@ -624,6 +630,8 @@ impl LichessBot {
 						challenge_ok = false;
 
 						decline_reasons.push(format!("{}", "wrong speed ( classical )"));
+
+						reason = "timeControl";
 					}
 				}
 
@@ -632,6 +640,8 @@ impl LichessBot {
 						challenge_ok = false;
 
 						decline_reasons.push(format!("{}", "wrong speed ( rapid )"));
+
+						reason = "timeControl";
 					}
 				}
 
@@ -640,6 +650,8 @@ impl LichessBot {
 						challenge_ok = false;
 
 						decline_reasons.push(format!("{}", "wrong speed ( blitz )"));
+
+						reason = "timeControl";
 					}
 				}
 
@@ -648,6 +660,8 @@ impl LichessBot {
 						challenge_ok = false;
 
 						decline_reasons.push(format!("{}", "wrong speed ( bullet )"));
+
+						reason = "timeControl";
 					}
 				}
 
@@ -656,6 +670,8 @@ impl LichessBot {
 						challenge_ok = false;
 
 						decline_reasons.push(format!("{}", "wrong speed ( ultrabullet )"));
+
+						reason = "timeControl";
 					}
 				}
 
@@ -664,6 +680,8 @@ impl LichessBot {
 						challenge_ok = false;
 
 						decline_reasons.push(format!("{}", "wrong mode ( rated )"));
+
+						reason = "casual";
 					}
 				}
 
@@ -672,6 +690,8 @@ impl LichessBot {
 						challenge_ok = false;
 
 						decline_reasons.push(format!("{}", "wrong mode ( casual )"));
+
+						reason = "rated";
 					}
 				}
 
@@ -683,7 +703,7 @@ impl LichessBot {
 					}
 				} else {
 					if log_enabled!(Level::Info) {
-						info!("declining challenge for reasons {:?}", decline_reasons);									
+						info!("declining challenge for reasons {:?} , api reason {}", decline_reasons, reason);									
 					}
 
 					let challenge_id = format!("{}", challenge.id);
@@ -695,7 +715,7 @@ impl LichessBot {
 
 						let lichess = Lichess::new(std::env::var("RUST_BOT_TOKEN").unwrap());
 
-						let result = lichess.challenge_decline(challenge_id.as_str()).await;
+						let result = lichess.challenge_decline(challenge_id.as_str(), Some(reason)).await;
 
 						if log_enabled!(Level::Info) {
 							info!("decline challenge result {:?}", result);
