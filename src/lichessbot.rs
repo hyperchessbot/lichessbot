@@ -109,10 +109,11 @@ pub struct LichessBot {
 }
 
 macro_rules! gen_set_props {
-	($($prop:ident),*) => {
+	($($(#[$attr:meta])* => $prop:ident),*) => {
 		$(
 			impl LichessBot {
-				/// create new lichess bot
+				$(#[$attr])*
+				#[doc="returns a LichessBot with this setting"]
 				pub fn $prop(mut self, value: bool) -> LichessBot{
 					self.$prop = value;
 
@@ -124,13 +125,20 @@ macro_rules! gen_set_props {
 }
 
 gen_set_props!(
-	enable_classical,
-	enable_rapid,
-	disable_blitz,
-	disable_bullet,
-	enable_ultrabullet,
-	enable_casual,
-	disable_rated
+	/// enable classical
+	=> enable_classical,
+	/// enable rapid
+	=> enable_rapid,
+	/// disable blitz
+	=> disable_blitz,
+	/// disable bullet
+	=> disable_bullet,
+	/// enable bullet
+	=> enable_ultrabullet,
+	/// enable casual
+	=> enable_casual,
+	/// disable rated
+	=> disable_rated
 );
 
 /// lichess bot implementation
