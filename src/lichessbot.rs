@@ -324,6 +324,8 @@ impl LichessBot {
 				let legals = pos.legals();
 
 				if legals.len() > 0 {
+					let mut move_source = "random";
+
 					let rand_move = legals.choose(&mut rand::thread_rng()).unwrap();
 
 					let rand_uci = Uci::from_standard(&rand_move).to_string();
@@ -362,6 +364,8 @@ impl LichessBot {
 								bestmove = m.uci.to_owned();
 
 								has_book_move = true;
+
+								move_source = "book";
 
 								if log_enabled!(Level::Info) {
 									info!("book move found {}", bestmove);
@@ -488,6 +492,8 @@ impl LichessBot {
 								debug!("thinking took {} ms , result {:?}", elapsed, go_result);
 							}
 
+							move_source = "engine";
+
 							let mut eff_wtime = state.wtime as i32;
 							let mut eff_btime = state.btime as i32;
 
@@ -554,16 +560,12 @@ impl LichessBot {
 									let _ = engine.clone().unwrap().go(go_job_ponder);
 								}
 							}
-						} else {
-							if log_enabled!(Level::Info) {
-								info!("no engine available, making random move");
-							}
 						}
 
 						let _ = self.set_state(self.get_state().await.set_engine_thinking(false)).await;
 
 						if log_enabled!(Level::Info) {
-							info!("making move {}", bestmove);
+							info!("making move {} , source '{}'", bestmove, move_source);
 						}
 
 						let result = self.lichess.make_a_bot_move(id.as_str(), bestmove.as_str(), false).await;
@@ -703,7 +705,7 @@ impl LichessBot {
 					}
 				} else {
 					if log_enabled!(Level::Info) {
-						info!("declining challenge for reasons {:?} , api reason {}", decline_reasons, reason);									
+						info!("declining challenge for reasons {:?} , api reason '{}'", decline_reasons, reason);									
 					}
 
 					let challenge_id = format!("{}", challenge.id);
