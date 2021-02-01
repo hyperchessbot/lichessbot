@@ -7,7 +7,7 @@ Lichess bot. Under construction.
 # Usage
 
 ```rust
-use log::{log_enabled, info, Level};
+use log::{info, log_enabled, Level};
 
 extern crate env_logger;
 
@@ -16,41 +16,42 @@ use dotenv::dotenv;
 use lichessbot::lichessbot::*;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>>{
-	dotenv().ok();
-	env_logger::init();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    dotenv().ok();
+    env_logger::init();
 
-	let bot = Box::leak(Box::new(LichessBot::new()
-		.uci_opt("Move Overhead", 500)
-		.uci_opt("Threads", 4)
-		.uci_opt("Hash", 128)
-		.uci_opt("Contempt", -25)
-		.enable_classical(false)
-		.enable_rapid(false)
-		.disable_blitz(false)
-		.disable_bullet(false)
-		.enable_ultrabullet(false)
-		.enable_casual(true)
-		.disable_rated(false)
-	));
-	
-	if log_enabled!(Level::Info){
-		info!("starting bot stream");
-	}
+    let bot = Box::leak(Box::new(
+        LichessBot::new()
+            .uci_opt("Move Overhead", 500)
+            .uci_opt("Threads", 4)
+            .uci_opt("Hash", 128)
+            .uci_opt("Contempt", -25)
+            .enable_classical(false)
+            .enable_rapid(false)
+            .disable_blitz(false)
+            .disable_bullet(false)
+            .enable_ultrabullet(false)
+            .enable_casual(true)
+            .disable_rated(false),
+    ));
 
-	let (tx, mut rxa) = bot.stream().await;
+    if log_enabled!(Level::Info) {
+        info!("starting bot stream");
+    }
 
-	tokio::time::sleep(tokio::time::Duration::from_millis(120000)).await;
+    let (tx, mut rxa) = bot.stream().await;
 
-	let _ = tx.send("stopped by user".to_string()).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(120000)).await;
 
-	let result = rxa.recv().await;
+    let _ = tx.send("stopped by user".to_string()).await;
 
-	if log_enabled!(Level::Info) {
-		info!("stop stream result {:?}", result);
-	}
+    let result = rxa.recv().await;
 
-	Ok(())
+    if log_enabled!(Level::Info) {
+        info!("stop stream result {:?}", result);
+    }
+
+    Ok(())
 }
 
 ```

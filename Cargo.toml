@@ -22,7 +22,7 @@ futures-util = "0.3.9"
 licoricedev = "0.1.2"
 shakmaty = "0.17.1"
 rand = "0.8.0"
-uciengine = "0.1.31"
+uciengine = "0.1.32"
 pgnparse = "0.1.15"
 envor = "0.1.3"
 
