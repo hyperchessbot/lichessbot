@@ -434,13 +434,13 @@ impl LichessBot {
 
 										let start = std::time::Instant::now();
 
-										let _ = engine.clone().unwrap().go(GoJob::new().pondermiss()).recv().await;
+										let _ = engine.clone().unwrap().go(GoJob::new().pondermiss()).await;
 
 										if log_enabled!(Level::Info) {
 											info!("engine start from scratch thinking on {:?}", go_job);
 										}
 
-										let result = engine.clone().unwrap().go(go_job).recv().await;
+										let result = engine.clone().unwrap().go(go_job).await;
 
 										elapsed = start.elapsed().as_millis();
 
@@ -452,7 +452,7 @@ impl LichessBot {
 
 										let start = std::time::Instant::now();
 
-										let result = engine.clone().unwrap().go(GoJob::new().ponderhit()).recv().await;
+										let result = engine.clone().unwrap().go(GoJob::new().ponderhit()).await;
 
 										elapsed = start.elapsed().as_millis();
 
@@ -480,7 +480,7 @@ impl LichessBot {
 
 									let start = std::time::Instant::now();
 
-									let result = engine.clone().unwrap().go(go_job).recv().await;
+									let result = engine.clone().unwrap().go(go_job).await;
 
 									elapsed = start.elapsed().as_millis();
 
@@ -519,7 +519,7 @@ impl LichessBot {
 								}
 							}
 
-							if let Some(go_result) = go_result {
+							if let Ok(go_result) = go_result {
 								if let Some(bm) = go_result.bestmove {
 									bestmove = bm;
 								}
